@@ -31,3 +31,13 @@
 >succeed www.span.com 113.112.185.220 2019-10-21(12:44:52)
 >failed null    //失败，找不到记录
 ```
+
+## transform.xml格式
+```
+<?xml version='1.0' encoding='UTF-8'?>
+<mainframe domian="www.span.com" date="2019-10-17(13:40)">
+	<record ip="113.112.208.208" date="2019-10-17(13:40)"/>
+	<record ip="113.112.208.208" date="2019-10-17(13:40)"/>
+	...
+</mainframe>
+```

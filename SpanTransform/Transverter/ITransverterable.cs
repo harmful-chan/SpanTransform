@@ -12,5 +12,8 @@ namespace SpanTransform.Transverter
         public IEnumerable<RecordModel> GetRecordsFromDomain(string domain);
         public IEnumerable<RecordModel> GetRecordsFromAddress(string address);
         public void AddLocalRecord(RecordModel recordModel);
+        public void Start();
+        public void Stop();
+        public void Reboot();
     }
 }

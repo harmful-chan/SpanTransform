@@ -14,7 +14,7 @@ namespace SpanTransform.Models
 
         public string Date
         {
-            get { return this.UpdateDateTime?.ToString("yyyy-MM-dd(hh:mm:ss:ff)"); }
+            get { return this.UpdateDateTime.ToString("yyyy-MM-dd(hh:mm:ss:ff)"); }
         }
 
     }
