@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace SpanTransform.Models
+﻿namespace SpanTransform.Models
 {
     public class ResultModel
     {
