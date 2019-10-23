@@ -9,83 +9,73 @@ using System.Linq;
 using System.Diagnostics;
 using System.Text;
 using Kooboo.Json;
+using SpanTransform.Common;
+using System.Threading;
 
 namespace SpanTransform.Transverter
 {
-    public partial class TcpTransverter : ITransverterable
+    public partial class TcpTransverter : TcpBase, ITransverterable
     {
-        private UdpClient _udpListener;
+        private Socket _socket;
         private IPEndPoint _ipEndPoint;
-        private string _filePath = "transform.xml";
+        private int _receiveBufferSize;
+        private string _filePath;
 
-        public TcpTransverter()
+        private XmlDocument _xmlDocument;
+        public TcpTransverter(IPEndPoint ipEndPoint = null)
         {
-            this._udpListener = new UdpClient();
-            this._ipEndPoint = new IPEndPoint(IPAddress.Any, 8898);
-        }
-        public void AddLocalRecord(RecordModel recordModel)
-        {
-            XmlDocument xmlDocument = new XmlDocument();
+            
+            this._socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            this._ipEndPoint = ipEndPoint ?? base.TransverterEndPoint;
+            this._receiveBufferSize = 1024;
 
-            //入参合法校验
-            if (string.IsNullOrEmpty(recordModel.Domain) ||
-                string.IsNullOrEmpty(recordModel.Address) ||
-                null == recordModel.Date)
-                throw new ArgumentNullException("recordModel");
-
-            //加载文档
-            string filePath = this._filePath;
-            if (File.Exists(filePath))
+            this._filePath = "transform.xml";
+            if (File.Exists(this._filePath))
             {
-                xmlDocument.Load(filePath);
+                this._xmlDocument = new XmlDocument();
+                this._xmlDocument.Load(this._filePath);
             }
             else
             {
-                xmlDocument.AppendChild(xmlDocument.CreateXmlDeclaration("1.0", "utf-8", null));
-                xmlDocument.AppendChild(xmlDocument.CreateElement("span"));
+                this._xmlDocument.AppendChild(this._xmlDocument.CreateXmlDeclaration("1.0", "utf-8", null));
+                this._xmlDocument.AppendChild(this._xmlDocument.CreateElement("span"));
+            }
+        }
+        public void AddLocalRecord(RecordModel recordModel)
+        {
+            //入参合法校验
+            if (string.IsNullOrEmpty(recordModel.Domain) ||
+                string.IsNullOrEmpty(recordModel.Address) ||
+                string.IsNullOrEmpty(recordModel.Date))
+                throw new ArgumentNullException("recordModel");
+
+
+            XmlNode spanNode = this._xmlDocument.SelectSingleNode("span");
+            XmlNode domainNode = spanNode.SelectSingleNode($"/span/mainframe[@domain='{recordModel.Domain}']");
+            if(null == domainNode)    //不在在
+            {
+                XmlElement mainframeElement = this._xmlDocument.CreateElement("mainframe");
+                mainframeElement.SetAttribute("domain", recordModel.Domain);
+                mainframeElement.SetAttribute("date", recordModel.Date);
+                domainNode = spanNode.AppendChild(mainframeElement);
             }
 
-            //搜索域名根节点
-            XmlNode xmlNode = null;
-            XmlNodeList xmlNodeList = xmlDocument.GetElementsByTagName("mainframe");
-            if (xmlNodeList.Count == 1)    //记录存在
+            //查找record
+            XmlNode recordNode = domainNode.SelectSingleNode($"/span/mainframe/record[@address='{recordModel.Address}']");
+            if(null == recordNode)   //不在在
             {
-                xmlNode = xmlNodeList.Item(0);
+                XmlElement recordElement = this._xmlDocument.CreateElement("record");
+                recordElement.SetAttribute("address", recordModel.Address);
+                recordElement.SetAttribute("date", recordModel.Date);
+                recordNode = domainNode.AppendChild(recordElement);
             }
-            else if (xmlNodeList.Count == 0)
+            else    //存在
             {
-                XmlElement xmlElement = xmlDocument.CreateElement("mainframe");
-                xmlElement.SetAttribute("domain", recordModel.Domain);
-                xmlElement.SetAttribute("date", recordModel.Date);
-                XmlNode spanElement = xmlDocument.SelectSingleNode("span");
-                spanElement.AppendChild(xmlElement);
-                xmlNode = xmlElement as XmlNode;
-            }
-
-            bool isExist = false;
-            //相同节点更新时间
-            foreach (XmlNode item in xmlNode.ChildNodes)
-            {
-                XmlElement itemlElement = item as XmlElement;
-                string oldIP = itemlElement.GetAttribute("address");
-                if (recordModel.Address.Equals(oldIP))    //相同
-                {
-                    itemlElement.SetAttribute("date", recordModel.Date);
-                    isExist = true;
-                }
-            }
-
-            //不存在添加节点
-            if (!isExist)
-            {
-                XmlElement xmlElement = xmlDocument.CreateElement("record");
-                xmlElement.SetAttribute("address", recordModel.Address);
-                xmlElement.SetAttribute("date", recordModel.Date);
-                xmlNode.AppendChild(xmlElement);
+                ((XmlElement)recordNode).SetAttribute("date", recordModel.Date);
             }
 
             //保存
-            xmlDocument.Save(this._filePath);
+            this._xmlDocument.Save(this._filePath);
         }
 
         public void AddLocalRecord(string domain, string address, string date)
@@ -112,68 +102,37 @@ namespace SpanTransform.Transverter
 
         public IEnumerable<RecordModel> GetRecordsFromAddress(string address)
         {
-            
-            if (!File.Exists(this._filePath))
-                return null;
-
-            //加载文档
-            XmlDocument xmlDocument = new XmlDocument();
-            xmlDocument.Load(this._filePath);
-            //读取所有record节点
-            List<XmlElement> xmlElements = new List<XmlElement>();
-            foreach (XmlElement e in xmlDocument.GetElementsByTagName("record"))
-            {
-                xmlElements.Add(e);
-            }
-            //匹配address
+            XmlNodeList recordNodes = this._xmlDocument.SelectNodes($"//record[@address='{address}']");
             List<RecordModel> records = new List<RecordModel>();
-            foreach (XmlElement e in xmlElements.Where(r => r.GetAttribute("address").Equals(address)))
+            foreach (XmlElement node in recordNodes)
             {
                 records.Add(new RecordModel()
                 {
-                    Domain = (e.ParentNode as XmlElement).GetAttribute("domain"),    //父节点domain
-                    Address = e.GetAttribute("address"),   //本节点 address
-                    Date = e.GetAttribute("date")    //本节点 date
+                    Domain = (node.ParentNode as XmlElement).GetAttribute("domain"),    //父节点domain
+                    Address = node.GetAttribute("address"),   //本节点 address
+                    Date = node.GetAttribute("date")    //本节点 date
                 });
             }
 
-            return records.Count() >= 0 ? records : null;
+            return records.Count >= 0 ? records : null;
 
         }
 
         public IEnumerable<RecordModel> GetRecordsFromDomain(string domain)
         {
-            if (!File.Exists(this._filePath))
-                return null;
-
-            //加载文档
-            XmlDocument xmlDocument = new XmlDocument();
-            xmlDocument.Load(this._filePath);
-            //读取mainframe节点
-            List<XmlElement> xmlElements = new List<XmlElement>();
-            foreach (XmlElement e in xmlDocument.GetElementsByTagName("mainframe"))
-            {
-                xmlElements.Add(e);
-            }
-            //匹配domain节点
-            List<XmlElement> domains = xmlElements.Where(e => e.GetAttribute("domain").Equals(domain)).ToList();
-            //子阶段record全部返回
+            XmlNodeList recordNodes = this._xmlDocument.SelectNodes($"//mainframe[@domain='{domain}']").Item(0).ChildNodes;
             List<RecordModel> records = new List<RecordModel>();
-            foreach (XmlElement d in domains)
+            foreach (XmlElement node in recordNodes)
             {
-                foreach (XmlElement c in d.ChildNodes)
+                records.Add(new RecordModel()
                 {
-                    records.Add(new RecordModel()
-                    {
-                        Domain = (c.ParentNode as XmlElement).GetAttribute("domain"),    //父节点domain
-                        Address = c.GetAttribute("address"),   //本节点 address
-                        Date = c.GetAttribute("date")    //本节点 date
-                    });
-                }
-                
-            } 
+                    Domain = (node.ParentNode as XmlElement).GetAttribute("domain"),    //父节点domain
+                    Address = node.GetAttribute("address"),   //本节点 address
+                    Date = node.GetAttribute("date")    //本节点 date
+                });
+            }
 
-            return records.Count() > 0 ? records : null;
+            return records.Count > 0 ? records : null;
         }
 
         public void Reboot()
@@ -187,7 +146,7 @@ namespace SpanTransform.Transverter
             {
                 while (true)
                 {
-                    this.Listener();
+                    //this.Listener();
                 }
             }
         }
@@ -200,24 +159,42 @@ namespace SpanTransform.Transverter
         //监听程序
         private void Listener()
         {
-            byte[] buffer = this._udpListener.Receive(ref this._ipEndPoint);
-            string msg = Encoding.Unicode.GetString(buffer);
-            RequestModel request = JsonSerializer.ToObject<RequestModel>(msg);
-            ResponseModel responce = new ResponseModel()
+            //绑定地址
+            this._socket.Bind(this._ipEndPoint);
+            //监听
+            this._socket.Listen(10);
+            //
+            Socket requestSocket =  this._socket.Accept();
+            Thread thread = new Thread(Do);
+            thread.Start();
+        }
+
+        //请求处理线程
+        private void Do(object obj)
+        {
+            byte[] receiveBuffer = new byte[this._receiveBufferSize];
+            int receiveCount = this._socket.Receive(receiveBuffer);
+            if(receiveCount > 0)
             {
-                Status = "failed"
-            };
-            if (request.Operation.Equals("update"))
-            {
-                this.AddLocalRecord(domain: request.Domain, 
-                    address: request.Address, 
-                    date:DateTime.Now.ToString("yyyy-MM-dd(hh:mm:ss:ff)"));
-                RecordModel record = this.GetRecordFromDomainLate(request.Domain);
-                responce.Status = "succeed";
-                responce.Record = record;
+                string requestStr = Encoding.Default.GetString(receiveBuffer);
+                RequestModel request = JsonSerializer.ToObject<RequestModel>(requestStr);
+                if(request.Role == RoleType.Transverter)
+                {
+                    if(request.Operation == OperationType.Start)
+                    {
+
+                    }
+                    else if (request.Operation == OperationType.Stop)
+                    {
+
+                    }
+                    else if (request.Operation == OperationType.Reboot)
+                    {
+
+                    }
+                }
             }
-            buffer = Encoding.ASCII.GetBytes(JsonSerializer.ToJson<ResponseModel>(responce));
-            this._udpListener.Send(buffer, buffer.Length);
+            
         }
 
         //获取最新记录
@@ -226,11 +203,7 @@ namespace SpanTransform.Transverter
             RecordModel newRecord = null;
             foreach (RecordModel record in records)
             {
-                if (newRecord == null)
-                {
-                    newRecord = record;
-                    continue;
-                }
+                if (newRecord == null) newRecord = record;
 
                 if (0 > DateTime.Compare(
                     DateTime.ParseExact(newRecord.Date, "yyyy-MM-dd(hh:mm:ss:ff)", System.Globalization.CultureInfo.CurrentCulture),
@@ -242,6 +215,8 @@ namespace SpanTransform.Transverter
 
             return newRecord;
         }
+
+
 
         //检测UDP服务器是否正在启动
         public bool IsRunning

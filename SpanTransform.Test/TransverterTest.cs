@@ -25,25 +25,12 @@ namespace SpanTransform.Test
         {
             date = DateTime.Now.ToString("yyyy-MM-dd(hh:mm:ss:ff)");
             this._transverter.AddLocalRecord(domain, address, date);
+            date = DateTime.Now.ToString("yyyy-MM-dd(hh:mm:ss:ff)");
+            this._transverter.AddLocalRecord(domain, address, date);
             XmlDocument xmlDocument = new XmlDocument();
-            try
-            {
-                xmlDocument.Load("transform.xml");
-                XmlNodeList xmlnodeList = xmlDocument.GetElementsByTagName("record");
-                if (xmlnodeList.Count == 0) throw new Exception();
-                foreach (XmlNode item in xmlnodeList)
-                {
-                    if((item as XmlElement).GetAttribute("date").Equals(date))
-                    {
-                        Assert.IsTrue(true);
-                        return;
-                    }
-                }
-            }
-            catch
-            {
-                Assert.Fail();
-            }
+            xmlDocument.Load("transform.xml");
+            XmlNode xmlNode = xmlDocument.SelectSingleNode($"/span/mainframe/record[@date='{date}']");
+            Assert.IsNotNull(xmlNode);
         }
         
         [TestMethod]
@@ -72,7 +59,7 @@ namespace SpanTransform.Test
             {
                 Address = address,
                 Domain = "test.span.com",
-                Date = DateTime.Now.ToString("yyy-MM-dd(hh:mm:ss)")
+                Date = DateTime.Now.ToString("yyy-MM-dd(hh:mm:ss:ff)")
             };
             this._transverter.AddLocalRecord(testRecord);
             RecordModel record = this._transverter.GetRecordFromAddressLate(address);
@@ -88,7 +75,7 @@ namespace SpanTransform.Test
             {
                 Address = "112.113.152.25",
                 Domain = domain,
-                Date = DateTime.Now.ToString("yyy-MM-dd(hh:mm:ss)")
+                Date = DateTime.Now.ToString("yyy-MM-dd(hh:mm:ss:ff)")
             };
             this._transverter.AddLocalRecord(testRecord);
             RecordModel record = this._transverter.GetRecordFromDomainLate(domain);

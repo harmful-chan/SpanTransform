@@ -56,7 +56,7 @@ namespace SpanTransform.Test
             
             ResponseModel responseModel = new ResponseModel()
             {
-                Status = "succeed",
+                //Status = "succeed",
                 Record = new RecordModel()
                 {
                     Domain = requestModel.Domain,
