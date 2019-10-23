@@ -12,13 +12,13 @@ using Kooboo.Json;
 
 namespace SpanTransform.Transverter
 {
-    public partial class UdpTransverter : ITransverterable
+    public partial class TcpTransverter : ITransverterable
     {
         private UdpClient _udpListener;
         private IPEndPoint _ipEndPoint;
         private string _filePath = "transform.xml";
 
-        public UdpTransverter()
+        public TcpTransverter()
         {
             this._udpListener = new UdpClient();
             this._ipEndPoint = new IPEndPoint(IPAddress.Any, 8898);
@@ -202,7 +202,22 @@ namespace SpanTransform.Transverter
         {
             byte[] buffer = this._udpListener.Receive(ref this._ipEndPoint);
             string msg = Encoding.Unicode.GetString(buffer);
-            CommunicationModel cnm = JsonSerializer.ToObject<CommunicationModel>(msg);
+            RequestModel request = JsonSerializer.ToObject<RequestModel>(msg);
+            ResponseModel responce = new ResponseModel()
+            {
+                Status = "failed"
+            };
+            if (request.Operation.Equals("update"))
+            {
+                this.AddLocalRecord(domain: request.Domain, 
+                    address: request.Address, 
+                    date:DateTime.Now.ToString("yyyy-MM-dd(hh:mm:ss:ff)"));
+                RecordModel record = this.GetRecordFromDomainLate(request.Domain);
+                responce.Status = "succeed";
+                responce.Record = record;
+            }
+            buffer = Encoding.ASCII.GetBytes(JsonSerializer.ToJson<ResponseModel>(responce));
+            this._udpListener.Send(buffer, buffer.Length);
         }
 
         //获取最新记录

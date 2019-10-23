@@ -15,7 +15,7 @@ namespace SpanTransform.Test
         private ITransverterable _transverter;
         public TransverterTest()
         {
-            this._transverter = new UdpTransverter();
+            this._transverter = new TcpTransverter();
         }
 
 

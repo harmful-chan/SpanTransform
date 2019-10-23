@@ -4,6 +4,6 @@ namespace SpanTransform.User
 {
     public interface IUserable
     {
-        public ResultModel UpdateTransverterRecord(RecordModel recordModel);
+        public OutParamModel UpdateTransverterRecord(InParamModel inParam);
     }
 }

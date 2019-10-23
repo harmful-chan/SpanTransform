@@ -4,6 +4,6 @@ namespace SpanTransform.Provider
 {
     public interface IProviderable
     {
-        public ResultModel UpdateTransverterRecord(RecordModel recordModel);
+        public OutParamModel UpdateTransverterRecord(InParamModel inParam);
     }
 }
