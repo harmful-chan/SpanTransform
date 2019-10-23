@@ -4,6 +4,7 @@ using System.Text;
 
 namespace SpanTransform.Common
 {
+    public readonly string DateTimeFormat = "yyy-MM-dd(hh:mm:ss:ff)";
     public enum StatusType
     {
         Success,

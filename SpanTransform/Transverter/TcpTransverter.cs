@@ -178,20 +178,16 @@ namespace SpanTransform.Transverter
             {
                 string requestStr = Encoding.Default.GetString(receiveBuffer);
                 RequestModel request = JsonSerializer.ToObject<RequestModel>(requestStr);
-                if(request.Role == RoleType.Transverter)
+                if(request.Role == RoleType.Provider)
                 {
-                    if(request.Operation == OperationType.Start)
+                    if(request.Operation == OperationType.Update)
                     {
-
+                        AddLocalRecord(request.Domain, request.Address, DateTime.Now.ToString("yyyy-MM-dd(hh:ss:mm:ff)"))
                     }
-                    else if (request.Operation == OperationType.Stop)
-                    {
+                }
+                else if(request.Role == RoleType.User)
+                {
 
-                    }
-                    else if (request.Operation == OperationType.Reboot)
-                    {
-
-                    }
                 }
             }
             
