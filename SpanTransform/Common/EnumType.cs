@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SpanTransform.Common
 {
-    public readonly string DateTimeFormat = "yyy-MM-dd(hh:mm:ss:ff)";
+    //public readonly string DateTimeFormat = "yyy-MM-dd(hh:mm:ss:ff)";
     public enum StatusType
     {
         Success,
@@ -14,9 +14,8 @@ namespace SpanTransform.Common
     public enum OperationType
     {
         Update,
-        Start,
-        Reboot,
-        Stop,
+        Work,
+        UnWoek,
         Get
     }
     public enum RoleType

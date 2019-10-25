@@ -28,6 +28,7 @@
 + user
 ```
 >st --role user --domian www.span.com  --operation get
+//>st --role user --address 113.112.185.220  --operation get
 >succeed www.span.com 113.112.185.220 2019-10-21(12:44:50)
 >failed null    //Ê§°Ü£¬ÕÒ²»µ½¼ÇÂ¼
 ```
