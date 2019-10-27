@@ -4,7 +4,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Text;
 
-namespace SpanTransform.Test
+namespace SpanTransform.Test.Common
 {
     public class TestBase
     {
@@ -26,6 +26,7 @@ namespace SpanTransform.Test
 
         ~TestBase()
         {
+            this._commonSocket.Disconnect(true);
             this._commonSocket.Close();
             this._commonSocket.Dispose();
         }

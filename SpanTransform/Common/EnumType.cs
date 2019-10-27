@@ -13,16 +13,16 @@ namespace SpanTransform.Common
 
     public enum OperationType
     {
-        Update,
-        Work,
-        UnWoek,
-        Get
+        Update = 21,
+        Work = 21,
+        UnWork = 22,
+        Get = 11
     }
     public enum RoleType
     {
-        Provider,
-        Transverter,
-        User
+        User = 1,
+        Provider = 2,
+        Transverter =3  
     }
 
 }

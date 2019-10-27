@@ -11,6 +11,6 @@ namespace SpanTransform.Models
     {
         
         public StatusType Status { get; set; }
-        public RecordModel Record { get; set; }
+        public IEnumerable<RecordModel> Records { get; set; }
     }
 }

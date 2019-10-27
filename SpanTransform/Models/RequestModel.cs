@@ -7,9 +7,9 @@ namespace SpanTransform.Models
 {
     public class RequestModel
     {
-        public RoleType Role { get; set; }
-        public OperationType Operation { get; set; }
-        public string Domain { get; set; }
-        public string Address { get; set; }
+        public RoleType? Role { get; set; }
+        public OperationType? Operation { get; set; }
+        public string? Domain { get; set; }
+        public string? Address { get; set; }
     }
 }

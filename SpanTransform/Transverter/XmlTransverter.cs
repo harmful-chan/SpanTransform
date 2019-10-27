@@ -21,13 +21,28 @@ namespace SpanTransform.Transverter
         private IPEndPoint _ipEndPoint;
         private int _receiveBufferSize;
         private string _filePath;
-
         private XmlDocument _xmlDocument;
         private bool _isDispos;
         private bool _isWork;
-        
-        private bool IsExist => Process.GetProcesses().Any(p => p.ProcessName.Equals("st"));
         public bool IsWork => this._isWork;
+        private bool _isExist;
+        private bool IsExist { set { this._isExist = value; } 
+            get 
+            {
+                this._isExist = Process.GetProcesses().Any(p => p.ProcessName.Equals("st"));
+                return this._isExist;
+            } 
+        }
+        private bool _isExist2;
+        private bool IsExist2
+        {
+            set { this._isExist2 = value; }
+            get
+            {
+                this._isExist2 = Process.GetProcesses().Where(p => p.ProcessName.Equals("st")).Count() > 1;
+                return this._isExist2;
+            }
+        }
 
         public XmlTransverter(IPEndPoint ipEndPoint = null, string filePath = null)
         {
@@ -109,16 +124,6 @@ namespace SpanTransform.Transverter
                 Date = date
             });
         }
-        public RecordModel GetRecordFromAddressLate(string address)
-        {
-            IEnumerable<RecordModel> records = this.GetRecordsFromAddress(address);
-            return GetRecordLate(records);
-        }
-        public RecordModel GetRecordFromDomainLate(string domain)
-        {
-            IEnumerable<RecordModel> records = this.GetRecordsFromDomain(domain);
-            return GetRecordLate(records);
-        }
         public IEnumerable<RecordModel> GetRecordsFromAddress(string address)
         {
             XmlNodeList recordNodes = this._xmlDocument.SelectNodes($"//record[@address='{address}']");
@@ -154,7 +159,7 @@ namespace SpanTransform.Transverter
         }
         public void Work()
         {
-            if (!this.IsExist)
+            if (!this.IsExist2)
             {
                 //绑定地址
                 this._socket.Bind(this._ipEndPoint);
@@ -171,20 +176,22 @@ namespace SpanTransform.Transverter
                     }
                     catch
                     {
-
+                        Config.Log(LogTypes.Error, "thread error.");
                     }
                 }
+            }
+            else
+            {
+                Config.Log(LogTypes.Error,"transverter is exist ");
             }
         }
         public void UnWork()
         {
-            if (this.IsExist)
+            if (this.IsExist2)
             {
                 Process.GetProcessesByName("st").First().Kill();
             }
         }
-        
-        
         //请求处理线程
         private void Do(object obj)
         {
@@ -201,13 +208,13 @@ namespace SpanTransform.Transverter
                 {
                     if(request.Operation == OperationType.Update)
                     {
-                        string currentDate = DateTime.Now.ToString("yyyy-MM-dd(hh:ss:mm:ff)");    //当前时间
+                        string currentDate = Config.NowDateFormatted;    //当前时间
                         AddLocalRecord(request.Domain, request.Address, currentDate);    //添加记录
-                        RecordModel record = GetRecordFromDomainLate(request.Domain);    //读取最新记录
-                        if (null != record)
+                        IEnumerable<RecordModel> records = GetRecordsFromDomain(request.Domain);    //读取最新记录
+                        if (null != records)
                         {
-                            response.Record = record;
-                            response.Status = record.Date.Equals(currentDate) ? StatusType.Success : StatusType.Fail;
+                            response.Records = records;
+                            response.Status = records.Any(r => r.Date.Equals(currentDate)) ? StatusType.Success : StatusType.Fail;
                         }
                     }
                 }
@@ -215,19 +222,19 @@ namespace SpanTransform.Transverter
                 {
                     if (request.Operation == OperationType.Get)
                     {
-                        RecordModel record = null;
+                        IEnumerable<RecordModel> records = null;
                         if (!string.IsNullOrEmpty(request.Domain) && string.IsNullOrEmpty(request.Address))
                         {
-                            record = GetRecordFromDomainLate(request.Domain);    //读取最新记录
+                            records = GetRecordsFromDomain(request.Domain);    //读取最新记录
                         }
                         else if (!string.IsNullOrEmpty(request.Address) && string.IsNullOrEmpty(request.Domain))
                         {
-                            record = GetRecordFromAddressLate(request.Address);    //读取最新记录
+                            records = GetRecordsFromAddress(request.Address);    //读取最新记录
                         }
-                        if (null != record)
+                        if (null != records)
                         {
-                            response.Record = record;
-                            response.Status = StatusType.Success;
+                            response.Records = records;
+                            response.Status = records.Count() > 0 ? StatusType.Success : StatusType.Fail;
                         }
                     }
                 }
@@ -235,52 +242,11 @@ namespace SpanTransform.Transverter
                 string sendStr = JsonSerializer.ToJson<ResponseModel>(response);
                 byte[] sendByte = Encoding.ASCII.GetBytes(sendStr);
                 socket.Send(sendByte);
-                //Socket clientSocket = obj as Socket;
-                //if (clientSocket != null)
-                //{
-                //    string sendStr = JsonSerializer.ToJson<ResponseModel>(response);
-                //    byte[] sendByte = Encoding.ASCII.GetBytes(sendStr);
-                //    this._socket.SendTo(sendByte, this._socket.RemoteEndPoint);
-                //    clientSocket.Close();
-                //}
+
+                socket.Disconnect(true);
+                socket.Close();
+                socket.Dispose();
             }
-        }
-
-        //获取最新记录
-        private RecordModel GetRecordLate(IEnumerable<RecordModel> records)
-        {
-            RecordModel newRecord = null;
-            foreach (RecordModel record in records)
-            {
-                if (newRecord == null) newRecord = record;
-                else
-                {
-                    if( CompareDate(newRecord.Date, record.Date) < 0)
-                    {
-                        newRecord = record;
-                    }
-                }
-            }
-
-            return newRecord;
-        }
-
-        private int CompareDate(string date1, string date2)
-        {
-            string[] d1 = date1.Split('-', '(', ':', ')');
-            string[] d2 = date2.Split('-', '(', ':', ')');
-            for (int i = 0; i < 7; i++)
-            {
-                int ret = Cpmpate(int.Parse(d1[0]), int.Parse(d2[0]));
-                if (ret > 0) return 1;
-                else if(ret < 0) return -1;
-            }
-            return -2;
-        }
-
-        private int Cpmpate(int i1, int i2)
-        {
-            return i1 == i2 ? 0 : i1 > i2 ? 1 : -1;
         }
 
 

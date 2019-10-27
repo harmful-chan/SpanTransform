@@ -65,19 +65,27 @@ namespace SpanTransform.Clients
         {
             RequestModel request = new RequestModel();
             request.Role = inParam.Role;
-            request.Operation = OperationType.Get;
+            request.Operation = inParam.Operation;
             request.Domain = inParam.Domain;
             request.Address = inParam.Address;
 
+            Config.Log(LogTypes.Request, "tcp client request");
             ResponseModel response = this.CommunicationWithServer(request);
-
+            Config.Log(LogTypes.Response, "tcp client response");
             OutParamModel outParam = new OutParamModel() { Raw = "" };
             if (response != null)
             {
                 outParam.Raw += (response.Status == StatusType.Success) ? "succeed " : "failed ";
-                outParam.Raw += response.Record.Domain + " ";
-                outParam.Raw += response.Record.Address + " ";
-                outParam.Raw += response.Record.Date + ".";
+                foreach (RecordModel record in response.Records)
+                {
+                    outParam.Raw += "[";
+                    outParam.Raw += record.Domain + " ";
+                    outParam.Raw += record.Address + " ";
+                    outParam.Raw += record.Date;
+                    outParam.Raw += "]";
+                }
+                
+
             }
 
             return outParam;
