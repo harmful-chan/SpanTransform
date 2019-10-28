@@ -1,22 +1,23 @@
 # SpanTransform
 
-## ¸ÅÊö
-+ ÎªSpanÏîÄ¿Ìá¹©ÓòÃû×ª»»¹¦ÄÜ
+## æ¦‚è¿°
++ åŸºäº.NET Core 3.0
++ ä¸ºSpané¡¹ç›®æä¾›åŸŸåè½¬æ¢åŠŸèƒ½
 
-## ÊµÏÖ
-+ ³ÌĞòÌá¹©Èı¸ö½ÇÉ«£ºtransverter, provider, user
-+ transverter ¸ºÔğ½ÓÊÜÊÕrividerÌá¹©µÃÓòÃûIPĞÅÏ¢£¬±£´æÖÁtransform.xmlÎÄ¼şÖĞ
-+ provider ¸ºÔğÌá¹©ÓòÃûIP¶ÔÕÕ
-+ user »ñÈ¡·şÎñIPa
+## å®ç°
++ ç¨‹åºæä¾›ä¸‰ä¸ªè§’è‰²ï¼štransverter, provider, user
++ transverter è´Ÿè´£æ¥å—æ”¶rivideræä¾›å¾—åŸŸåIPä¿¡æ¯ï¼Œä¿å­˜è‡³transform.xmlæ–‡ä»¶ä¸­
++ provider è´Ÿè´£æä¾›åŸŸåIPå¯¹ç…§
++ user è·å–æœåŠ¡IPa
 
-## Ê¹ÓÃ·½Ê½
+## ä½¿ç”¨æ–¹å¼
 + provider
 ```
 >st --role provider --operation update --domian www.span.com --adddress 113.112.185.220  
 >...
->succeed [www.span.com 113.112.185.220 2019-10-21(12:44:52)]  [...]...    //³É¹¦
->failed [www.span.com 113.112.185.220 2019-10-21(12:44:52)]    //Ê§°Ü·µ»Ø×îºó¸üĞÂ¼ÇÂ¼
->failed null    //¸üĞÂÊ§°Ü£¬¼ÇÂ¼Îª¿Õ
+>succeed [www.span.com 113.112.185.220 2019-10-21(12:44:52)]  [...]...    //æˆåŠŸ
+>failed [www.span.com 113.112.185.220 2019-10-21(12:44:52)]    //å¤±è´¥è¿”å›æœ€åæ›´æ–°è®°å½•
+>failed null    //æ›´æ–°å¤±è´¥ï¼Œè®°å½•ä¸ºç©º
 ```
 + transverter 
 ```
@@ -29,10 +30,10 @@
 >st --role user --operation get --address 113.112.185.220 
 >...
 >succeed [www.span.com 113.112.185.220 2019-10-21(12:44:50)]  [...] ...
->failed null    //Ê§°Ü£¬ÕÒ²»µ½¼ÇÂ¼
+>failed null    //å¤±è´¥ï¼Œæ‰¾ä¸åˆ°è®°å½•
 ```
 
-## transform.xml¸ñÊ½
+## transform.xmlæ ¼å¼
 ```
 <?xml version='1.0' encoding='UTF-8'?>
 <span>
@@ -43,3 +44,8 @@
 	</mainframe>
 <span>
 ```
+
+## å…¶ä»–
++ runtime ä¸‹è½½åœ°å€ï¼š
++ [.net core runtime for window x64](https://download.visualstudio.microsoft.com/download/pr/f15b7c04-2900-4a14-9c01-ccd66a4323cc/17a6bbd44f0d0a85d219dd9e166a89ca/dotnet-runtime-3.0.0-win-x64.zip)
++ [.net core runtime for linux x64](https://download.visualstudio.microsoft.com/download/pr/a5ff9cbb-d558-49d1-9fd2-410cb1c8b095/a940644f4133b81446cb3733a620983a/dotnet-runtime-3.0.0-linux-x64.tar.gz)
