@@ -3,9 +3,9 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SpanTransform.Clients
+namespace SpanTransform.Sender
 {
-    public interface IClientable
+    public interface ISenderable
     {
         /// <summary>
         /// 获取信息

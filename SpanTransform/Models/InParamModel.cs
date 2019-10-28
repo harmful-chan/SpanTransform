@@ -11,5 +11,6 @@ namespace SpanTransform.Models
         public OperationType? Operation { get; set; }
         public string? Domain { get; set; }
         public string? Address { get; set; }
+        public IEnumerable<string>? Others { get; set; }
     }
 }

@@ -1,5 +1,5 @@
 ﻿using Kooboo.Json;
-using SpanTransform.Clients;
+using SpanTransform.Sender;
 using SpanTransform.Common;
 using SpanTransform.Models;
 using System;
@@ -8,22 +8,22 @@ using System.Net;
 using System.Net.Sockets;
 using System.Text;
 
-namespace SpanTransform.Clients
+namespace SpanTransform.Sender
 {
-    public class TransverterClient: IClientable
+    public class TransSender: ISenderable
     {
         private Socket _socket;
         private IPEndPoint _remoteEndPoint;
         private int _receiveBufferSize;
 
-        public TransverterClient(IPEndPoint remoteEndPoint = null)  
+        public TransSender(IPEndPoint remoteEndPoint = null)  
         {
             this._receiveBufferSize = 1024;
             this._socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             this._remoteEndPoint = remoteEndPoint ?? Config.DefaultTransverterEndPoint;
         }
 
-        ~TransverterClient()
+        ~TransSender()
         {
             this._socket.Close();
             this._socket.Dispose();

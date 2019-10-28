@@ -1,30 +1,28 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
-using SpanTransform.Clients;
 using SpanTransform.Common;
 using SpanTransform.Models;
+using SpanTransform.Sender;
 using SpanTransform.Test.Common;
-using TransverterClient = SpanTransform.Clients.TransverterClient;
-
 namespace SpanTransform.Test
 {
     [TestClass]
-    public class ClientTest : TestBase
+    public class SenderTest : TestBase
     {
         
-        private IClientable _client;
+        private ISenderable _client;
 
-        public ClientTest():base()
+        public SenderTest():base()
         {
-            this._client = new TransverterClient(base.RemoteTestEndpoint);
+            this._client = new TransSender(base.RemoteTestEndpoint);
         }
 
         [TestMethod]
         [DataRow("--role provider --domain www.span.com --address 113.112.185.220 --operation update")]
-        public void TestUpdateTransverterRecord(string args)
+        public void TestOrder(string args)
         {
             TestServer server = new TestServer(base.RemoteTestEndpoint);
             Config config = new Config();
-            CmdSerializer<InParamModel> cmdHelper = new CmdSerializer<InParamModel>(args, config.Directives, config.Paramters, config.Others);
+            CmdSerializer<InParamModel> cmdHelper = new CmdSerializer<InParamModel>(args, config.Directives, config.Paramters, config.StringParamters);
             InParamModel inParam = cmdHelper.ToModel();
             server.Work();
             while (!server.IsWork) ;

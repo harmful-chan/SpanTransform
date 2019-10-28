@@ -1,4 +1,4 @@
-﻿using SpanTransform.Clients;
+﻿using SpanTransform.Sender;
 using SpanTransform.Common;
 using SpanTransform.Models;
 using SpanTransform.Transverter;
@@ -15,7 +15,7 @@ namespace SpanTransform
             
             
             //入参格式化
-            InParamModel inParam = new CmdSerializer<InParamModel>(args, config.Directives, config.Paramters, config.Others).ToModel();
+            InParamModel inParam = new CmdSerializer<InParamModel>(args, config.Directives, config.Paramters, config.StringParamters).ToModel();
             Config.Log(LogTypes.Input, $"role:{inParam.Role} operation:{inParam.Operation} [domain:{inParam.Domain}] [address:{inParam.Address}]");
             if (inParam == null)
             {
@@ -40,7 +40,7 @@ namespace SpanTransform
             //user privider
             if (inParam.Role == RoleType.User || inParam.Role == RoleType.Provider)    
             {
-                TransverterClient client = new TransverterClient(Config.DefaultTransverterEndPoint);
+                TransSender client = new TransSender(Config.DefaultTransverterEndPoint);
                 Config.Log(LogTypes.Input, "client working.");
                 outParam = client.Order(inParam);
                 Config.Log(LogTypes.Output, "client work finish.");
