@@ -14,7 +14,8 @@ namespace SpanTransform.Test
         //[DataRow("--role user --operation get --address 113.112.185.220")]
         //[DataRow("--role transverter --operation work")]
         //[DataRow("--role transverter --operation unwork")]
-        [DataRow("--role provider --operation update --domain www.span.com --address 113.112.185.220")]
+        //[DataRow("--role provider --operation update --domain www.span.com --address 113.112.185.220")]
+        [DataRow("--role provider --operation update --domain www.span.com --address 113.112.185.220 --wait")]
         public void TestProgram(string arg)
         {
             Program.Main(arg.Split(" "));

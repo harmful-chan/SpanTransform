@@ -2,6 +2,7 @@
 using SpanTransform.Common;
 using SpanTransform.Models;
 using SpanTransform.Sender;
+using SpanTransform.Serializer;
 using SpanTransform.Test.Common;
 namespace SpanTransform.Test
 {
@@ -21,8 +22,7 @@ namespace SpanTransform.Test
         public void TestOrder(string args)
         {
             TestServer server = new TestServer(base.RemoteTestEndpoint);
-            Config config = new Config();
-            CmdSerializer<InParamModel> cmdHelper = new CmdSerializer<InParamModel>(args, config.Directives, config.Paramters, config.StringParamters);
+            CmdSerializer<InParamModel> cmdHelper = new CmdSerializer<InParamModel>(args.Split(' '));
             InParamModel inParam = cmdHelper.ToModel();
             server.Work();
             while (!server.IsWork) ;

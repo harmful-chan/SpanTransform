@@ -2,6 +2,8 @@
 using SpanTransform.Common;
 using SpanTransform.Models;
 using SpanTransform.Transverter;
+using System.Linq;
+using SpanTransform.Serializer;
 
 namespace SpanTransform
 {
@@ -9,14 +11,11 @@ namespace SpanTransform
     {
         public static void Main(string[] args)
         {
-            //配置参数初始化
-            Config config = new Config();
-            
-            
-            
+
             //入参格式化
-            InParamModel inParam = new CmdSerializer<InParamModel>(args, config.Directives, config.Paramters, config.StringParamters).ToModel();
-            Config.Log(LogTypes.Input, $"role:{inParam.Role} operation:{inParam.Operation} [domain:{inParam.Domain}] [address:{inParam.Address}]");
+            CmdSerializer<InParamModel> cmdSerializer = new CmdSerializer<InParamModel>(args);
+            InParamModel inParam = Config.AddMatchedGroups(cmdSerializer).ToModel();
+            Config.Log(LogTypes.Input, $" [role:{inParam.Role}] [operation:{inParam.Operation}] [domain:{inParam.Domain}] [address:{inParam.Address}]");
             if (inParam == null)
             {
                 Config.Log(LogTypes.Input, "arg error.");
@@ -26,15 +25,36 @@ namespace SpanTransform
 
 
             //模型验证
-            bool flag1 = (inParam.Role == RoleType.User ? inParam.Operation == OperationType.Get : false);
-            bool flag2 = (inParam.Role == RoleType.Provider ? inParam.Operation == OperationType.Update && !string.IsNullOrEmpty(inParam.Domain) && !string.IsNullOrEmpty(inParam.Address): false);
-            bool flag3 = (inParam.Role == RoleType.Transverter ? inParam.Operation == OperationType.Work || inParam.Operation == OperationType.UnWork : false);
-            if (!(flag1 || flag2 || flag3))
+            //user get
+            bool isUser = (inParam.Role == RoleType.User ? inParam.Operation == OperationType.Get : false);
+            //provider update 
+            bool isProvider = (inParam.Role == RoleType.Provider && inParam.Operation == OperationType.Update);
+            //domain=* address=*
+            bool haveDomainAddress = (!string.IsNullOrEmpty(inParam.Domain) && !string.IsNullOrEmpty(inParam.Address));
+            //domain=* address=null
+            bool haveDomainOnly = (!string.IsNullOrEmpty(inParam.Domain) && string.IsNullOrEmpty(inParam.Address));
+            //domain=null address=*
+            bool haveAddressOnly = (string.IsNullOrEmpty(inParam.Domain) && !string.IsNullOrEmpty(inParam.Address));
+            //transverter work/unwork
+            bool isTransverter = (inParam.Role == RoleType.Transverter ? inParam.Operation == OperationType.Work || inParam.Operation == OperationType.UnWork : false);
+            //user/provider haveDomainAddress/haveAddressOnly
+            bool isWait = inParam.Others.Any(o => o.Equals("--wait"));
+            if (!( 
+                (isUser && haveDomainOnly) || 
+                (isUser && haveAddressOnly)  || 
+                (isProvider && haveDomainAddress) ||
+                (isProvider && haveDomainOnly) ||
+                (isProvider && haveAddressOnly) ||
+                (isTransverter && !haveDomainAddress)))
             {
                 Config.Log(LogTypes.Input, "model verify error.");
                 return;
             }
 
+            string inputStr = (isProvider && haveAddressOnly) || (isProvider && haveDomainOnly) ? Config.Get() : "";
+            inParam.Domain = (isProvider && haveAddressOnly) ? inputStr : inParam.Domain;
+            inParam.Address = (isProvider && haveDomainOnly) ? inputStr : inParam.Address;
+            Config.Log(LogTypes.Input, $" [role:{inParam.Role}] [operation:{inParam.Operation}] [domain:{inParam.Domain}] [address:{inParam.Address}]");
 
             OutParamModel outParam = null;
             //user privider
