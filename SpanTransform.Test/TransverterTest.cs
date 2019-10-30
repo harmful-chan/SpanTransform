@@ -86,5 +86,19 @@ namespace SpanTransform.Test
                 response.Records.First().Address.Equals("0.0.0.0"));
         }
 
+        [TestMethod]
+        public void TestUnWork()
+        {
+            try
+            {
+                this._transverter.UnWork();
+            }
+            catch(Exception ex)
+            {
+                ;
+            }
+            
+        }
+
     }
 }

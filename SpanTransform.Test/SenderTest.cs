@@ -23,7 +23,7 @@ namespace SpanTransform.Test
         {
             TestServer server = new TestServer(base.RemoteTestEndpoint);
             CmdSerializer<InParamModel> cmdHelper = new CmdSerializer<InParamModel>(args.Split(' '));
-            InParamModel inParam = cmdHelper.ToModel();
+            InParamModel inParam = cmdHelper.AddMatchedGroups().ToModel();
             server.Work();
             while (!server.IsWork) ;
             OutParamModel outParam = this._client.Order(inParam);

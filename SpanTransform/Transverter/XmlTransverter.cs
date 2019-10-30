@@ -29,7 +29,7 @@ namespace SpanTransform.Transverter
         private bool IsExist { set { this._isExist = value; } 
             get 
             {
-                this._isExist = Process.GetProcesses().Any(p => p.ProcessName.Equals("st"));
+                this._isExist = this.GetStIds().Length == 1;
                 return this._isExist;
             } 
         }
@@ -39,7 +39,7 @@ namespace SpanTransform.Transverter
             set { this._isExist2 = value; }
             get
             {
-                this._isExist2 = Process.GetProcesses().Where(p => p.ProcessName.Equals("st")).Count() > 1;
+                this._isExist2 = this.GetStIds().Length > 1;
                 return this._isExist2;
             }
         }
@@ -126,36 +126,51 @@ namespace SpanTransform.Transverter
         }
         public IEnumerable<RecordModel> GetRecordsFromAddress(string address)
         {
-            XmlNodeList recordNodes = this._xmlDocument.SelectNodes($"//record[@address='{address}']");
-            List<RecordModel> records = new List<RecordModel>();
-            foreach (XmlElement node in recordNodes)
+            try
             {
-                records.Add(new RecordModel()
+                XmlNodeList recordNodes = this._xmlDocument.SelectNodes($"//record[@address='{address}']");
+                List<RecordModel> records = new List<RecordModel>();
+                foreach (XmlElement node in recordNodes)
                 {
-                    Domain = (node.ParentNode as XmlElement).GetAttribute("domain"),    //父节点domain
-                    Address = node.GetAttribute("address"),   //本节点 address
-                    Date = node.GetAttribute("date")    //本节点 date
-                });
-            }
+                    records.Add(new RecordModel()
+                    {
+                        Domain = (node.ParentNode as XmlElement).GetAttribute("domain"),    //父节点domain
+                        Address = node.GetAttribute("address"),   //本节点 address
+                        Date = node.GetAttribute("date")    //本节点 date
+                    });
+                }
 
-            return records.Count >= 0 ? records : null;
+                return records.Count >= 0 ? records : null;
+            }
+            catch
+            {
+                return null;
+            }
+            
 
         }
         public IEnumerable<RecordModel> GetRecordsFromDomain(string domain)
         {
-            XmlNodeList recordNodes = this._xmlDocument.SelectNodes($"//mainframe[@domain='{domain}']").Item(0).ChildNodes;
-            List<RecordModel> records = new List<RecordModel>();
-            foreach (XmlElement node in recordNodes)
+            try
             {
-                records.Add(new RecordModel()
+                XmlNodeList recordNodes = this._xmlDocument.SelectNodes($"//mainframe[@domain='{domain}']").Item(0).ChildNodes;
+                List<RecordModel> records = new List<RecordModel>();
+                foreach (XmlElement node in recordNodes)
                 {
-                    Domain = (node.ParentNode as XmlElement).GetAttribute("domain"),    //父节点domain
-                    Address = node.GetAttribute("address"),   //本节点 address
-                    Date = node.GetAttribute("date")    //本节点 date
-                });
+                    records.Add(new RecordModel()
+                    {
+                        Domain = (node.ParentNode as XmlElement).GetAttribute("domain"),    //父节点domain
+                        Address = node.GetAttribute("address"),   //本节点 address
+                        Date = node.GetAttribute("date")    //本节点 date
+                    });
+                }
+                return records.Count > 0 ? records : null;
             }
-
-            return records.Count > 0 ? records : null;
+            catch
+            {
+                return null;
+            }
+            
         }
         public void Work()
         {
@@ -166,30 +181,44 @@ namespace SpanTransform.Transverter
                 //监听
                 this._socket.Listen(10);
                 this._isWork = true;
+                Config.Log(LogTypes.Listening, $"listening :" + this._ipEndPoint.Address.ToString());
                 while (true)
                 {
                     try
                     {
+                        
                         Socket requestSocket = this._socket.Accept();
+                        Config.Log(LogTypes.Listening, $"receive message from:" + (requestSocket.RemoteEndPoint as IPEndPoint).Address.ToString());
                         Thread thread = new Thread(Do);
                         thread.Start(requestSocket);
                     }
-                    catch
+                    catch(Exception ex)
                     {
-                        Config.Log(LogTypes.Error, "thread error.");
+                        throw ex;
                     }
                 }
             }
             else
             {
-                Config.Log(LogTypes.Error,"transverter is exist ");
+                string idStr = "";
+                foreach (int id in GetStIds())
+                {
+                    idStr += id + " ";
+                }
+                throw new Exception("transverter is exist, id:" + idStr);
             }
         }
         public void UnWork()
         {
             if (this.IsExist2)
             {
-                Process.GetProcessesByName("st").First().Kill();
+                int[] v = this.GetStIds();
+                Config.Log(LogTypes.Kill, $"kill process id:" + v[0]);
+                Process.GetProcessById(v[0]).Kill();
+            }
+            else
+            {
+                throw new Exception("transverter is not exist.");
             }
         }
         //请求处理线程
@@ -247,6 +276,13 @@ namespace SpanTransform.Transverter
                 socket.Close();
                 socket.Dispose();
             }
+        }
+
+        private int[] GetStIds()
+        {
+            Process[] process = Process.GetProcessesByName("st");
+            int[] ids = Array.ConvertAll<Process, int>(process, p => p.Id);
+            return ids;
         }
 
 

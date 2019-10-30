@@ -4,91 +4,149 @@ using SpanTransform.Models;
 using SpanTransform.Transverter;
 using System.Linq;
 using SpanTransform.Serializer;
+using System;
+using System.Net;
+using System.Collections.Generic;
 
 namespace SpanTransform
 {
     public class Program
     {
+        public static InParamModel InParam { get; private set; }
+        public static OutParamModel OutParam { get; private set; }
+
         public static void Main(string[] args)
         {
+            try
+            {
+                //入参格式化
+                Input(args);
 
-            //入参格式化
+                //模型验证
+                Verify();
+
+                //操作
+                if (InParam.Role == RoleType.User) UserOperation();
+                else if (InParam.Role == RoleType.Provider) ProviderOperation();
+                else if (InParam.Role == RoleType.Transverter) TransveterOperation();
+
+                //结果输出
+                Output();
+            }catch(Exception e)
+            {
+                Config.Log(LogTypes.Error, e.Message);
+            }
+
+            
+        }
+
+        private static void Input(string[] args)
+        {
             CmdSerializer<InParamModel> cmdSerializer = new CmdSerializer<InParamModel>(args);
-            InParamModel inParam = Config.AddMatchedGroups(cmdSerializer).ToModel();
-            Config.Log(LogTypes.Input, $" [role:{inParam.Role}] [operation:{inParam.Operation}] [domain:{inParam.Domain}] [address:{inParam.Address}]");
-            if (inParam == null)
-            {
-                Config.Log(LogTypes.Input, "arg error.");
-                return;
-            } 
+            InParam = cmdSerializer.AddMatchedGroups().ToModel();
+            
+            Config.Log(LogTypes.Input, 
+                $"[role:{InParam.Role}] "+
+                $"[operation:{InParam.Operation}] "+
+                $"[domain:{InParam.Domain}] "+
+                $"[address:{InParam.Address}]");
+            if (InParam == null)  throw new Exception("arg error.");
+        }
 
-
-
-            //模型验证
+        private static void Verify()
+        {
             //user get
-            bool isUser = (inParam.Role == RoleType.User ? inParam.Operation == OperationType.Get : false);
+            bool isUser = (InParam.Role == RoleType.User ? InParam.Operation == OperationType.Get : false);
             //provider update 
-            bool isProvider = (inParam.Role == RoleType.Provider && inParam.Operation == OperationType.Update);
+            bool isProvider = (InParam.Role == RoleType.Provider && InParam.Operation == OperationType.Update);
+            //domain=*
+            bool haveDomain = !string.IsNullOrEmpty(InParam.Domain);
+            //address=*
+            bool haveAddress = !string.IsNullOrEmpty(InParam.Address);
             //domain=* address=*
-            bool haveDomainAddress = (!string.IsNullOrEmpty(inParam.Domain) && !string.IsNullOrEmpty(inParam.Address));
+            bool haveDomainAddress = haveDomain && haveAddress;
             //domain=* address=null
-            bool haveDomainOnly = (!string.IsNullOrEmpty(inParam.Domain) && string.IsNullOrEmpty(inParam.Address));
+            bool haveDomainOnly = haveDomain && !haveAddress;
             //domain=null address=*
-            bool haveAddressOnly = (string.IsNullOrEmpty(inParam.Domain) && !string.IsNullOrEmpty(inParam.Address));
+            bool haveAddressOnly = !haveDomain && haveAddress;
+
             //transverter work/unwork
-            bool isTransverter = (inParam.Role == RoleType.Transverter ? inParam.Operation == OperationType.Work || inParam.Operation == OperationType.UnWork : false);
-            //user/provider haveDomainAddress/haveAddressOnly
-            bool isWait = inParam.Others.Any(o => o.Equals("--wait"));
-            if (!( 
-                (isUser && haveDomainOnly) || 
-                (isUser && haveAddressOnly)  || 
-                (isProvider && haveDomainAddress) ||
-                (isProvider && haveDomainOnly) ||
-                (isProvider && haveAddressOnly) ||
-                (isTransverter && !haveDomainAddress)))
-            {
-                Config.Log(LogTypes.Input, "model verify error.");
-                return;
-            }
+            bool isTransverter = (InParam.Role == RoleType.Transverter ? InParam.Operation == OperationType.Work || InParam.Operation == OperationType.UnWork : false);
+            bool isUnWork = InParam.Operation == OperationType.UnWork;
+            bool isWork = InParam.Operation == OperationType.Work;
+            //--wait
+            bool isWait = InParam.Others.Any(o => o.Equals("--wait"));
+            //验证
+            bool flag = Config.VerifyIsTrueAny((isUser && haveDomainOnly),
+                (isUser && haveAddressOnly),
+                (isProvider && haveDomainAddress),
+                (isProvider && haveDomainOnly && isWait),
+                (isProvider && haveAddressOnly && isWait),
+                (isTransverter && !haveDomain && !haveAddress && isUnWork),
+                (isTransverter && haveAddressOnly && isWork),
+                (isTransverter && !haveAddressOnly && isWait && isWork));
+            if (!flag) throw new Exception("verify business");
 
-            string inputStr = (isProvider && haveAddressOnly) || (isProvider && haveDomainOnly) ? Config.Get() : "";
-            inParam.Domain = (isProvider && haveAddressOnly) ? inputStr : inParam.Domain;
-            inParam.Address = (isProvider && haveDomainOnly) ? inputStr : inParam.Address;
-            Config.Log(LogTypes.Input, $" [role:{inParam.Role}] [operation:{inParam.Operation}] [domain:{inParam.Domain}] [address:{inParam.Address}]");
+            //获取字符串
+            if (isProvider && haveAddressOnly && isWait) InParam.Domain = Config.Get();
+            if (isProvider && haveDomainOnly && isWait) InParam.Address = Config.Get();
+            if (isTransverter && !haveAddressOnly && isWait) InParam.Address = Config.Get();
 
-            OutParamModel outParam = null;
-            //user privider
-            if (inParam.Role == RoleType.User || inParam.Role == RoleType.Provider)    
-            {
-                TransSender client = new TransSender(Config.DefaultTransverterEndPoint);
-                Config.Log(LogTypes.Input, "client working.");
-                outParam = client.Order(inParam);
-                Config.Log(LogTypes.Output, "client work finish.");
-                if(outParam == null)
-                {
-                    Config.Log(LogTypes.Error,"client OutPut Paramter null.");
-                }
-            }
-            //transverter
-            else if (inParam.Role == RoleType.Transverter)    
-            {
-                XmlTransverter xmlTransverter = new XmlTransverter(Config.DefaultTransverterEndPoint);
-                Config.Log(LogTypes.Input, "transverter working.");
-                if (inParam.Operation == OperationType.Work)
-                {
-                    xmlTransverter.Work();   
-                }
-                else if (inParam.Operation == OperationType.UnWork)
-                {
-                    xmlTransverter.UnWork();
-                }
-                Config.Log(LogTypes.Output, "transverter finish.");
-            }
+            Config.Log(LogTypes.Verify,
+                $"[role:{InParam.Role}] " +
+                $"[operation:{InParam.Operation}] " +
+                $"[domain:{InParam.Domain}] " +
+                $"[address:{InParam.Address}]");
 
-            //结果输出
-            if (outParam != null)
+        }
+
+        private static void UserOperation()
+        {
+            TransSender client = new TransSender(Config.DefaultTransverterEndPoint);
+            Config.Log(LogTypes.Operation, "user working.");
+            OutParam = client.Order(InParam);
+            Config.Log(LogTypes.Operation, "user work finish.");
+            if (OutParam == null)  throw new Exception("user client output paramter null.");
+        }
+
+        private static void ProviderOperation()
+        {
+            TransSender client = new TransSender(Config.DefaultTransverterEndPoint);
+            Config.Log(LogTypes.Operation, "provider working.");
+            OutParam = client.Order(InParam);
+            Config.Log(LogTypes.Operation, "provider work finish.");
+            if (OutParam == null) throw new Exception("provider client output paramter null.");
+        }
+        private static void TransveterOperation()
+        {
+            XmlTransverter xmlTransverter = new XmlTransverter();
+            Config.Log(LogTypes.Operation, "transverter working.");
+            if (InParam.Operation == OperationType.Work)
             {
-                Config.Log(LogTypes.Output, outParam.Raw);
+                if (!string.IsNullOrEmpty(InParam.Address))
+                    xmlTransverter = new XmlTransverter(new IPEndPoint(IPAddress.Parse(InParam.Address), Config.DefaultTransverterPort));
+                else throw new Exception("address is null");
+                xmlTransverter.Work();
+            }
+            else if (InParam.Operation == OperationType.UnWork)
+            {
+                xmlTransverter.UnWork();
+                OutParam = new OutParamModel() { Raw = "succeed" };
+            }
+            Config.Log(LogTypes.Operation, "transverter finish.");
+        }
+
+        private static void Output()
+        {
+            if (OutParam == null) throw new Exception("output is null");
+            Config.Log(LogTypes.Output, $"{OutParam.IsSuccess}");
+
+            if (OutParam.Records != null)
+            {
+                foreach (RecordModel record in OutParam.Records)
+                {
+                    Config.Log(LogTypes.Default, $"[{record.Domain} {record.Address} {record.Date}]");
+                }
             }
             
         }

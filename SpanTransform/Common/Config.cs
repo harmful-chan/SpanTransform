@@ -2,20 +2,14 @@
 using SpanTransform.Serializer;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Reflection;
 using System.Text;
 
 namespace SpanTransform.Common
 {
-    public enum LogTypes
-    {
-        Input,
-        Output,
-        Request,
-        Response,
-        Error
-    }
+
 
     /// <summary>
     /// 业务配置信息
@@ -25,6 +19,7 @@ namespace SpanTransform.Common
 
         public static CmdSerializer<InParamModel> AddMatchedGroups(this CmdSerializer<InParamModel> cmdSerializer)
         {
+
             Type inParamType = typeof(InParamModel);
             cmdSerializer.AddMatchedGroup("--role", inParamType.GetProperty("Role"), "transverter", RoleType.Transverter);
             cmdSerializer.AddMatchedGroup("--role", inParamType.GetProperty("Role"), "provider", RoleType.Provider);
@@ -36,13 +31,48 @@ namespace SpanTransform.Common
             cmdSerializer.AddMatchedGroup("--address", inParamType.GetProperty("Address"), "*", "*");
             cmdSerializer.AddMatchedGroup("--domain", inParamType.GetProperty("Domain"), "*", "*");
             cmdSerializer.AddMatchedGroup("--wait", inParamType.GetProperty("Others"), null, "--wait");
-
             return cmdSerializer;
         }
 
+        public static bool VerifyIsTrueAny(params bool[] flags)
+        {
+            return flags.Any(f => f);
+        }
 
-        public static void Log(LogTypes type, string msg) => Console.WriteLine($"[{type}]" + msg);
-        public static string Get() => Console.ReadLine();
+
+        public static void Log(LogTypes type, string[] msgs)
+        {
+            Array.ForEach(msgs, m => Config.Log(type, m));
+            
+        }
+
+        public static void Log(LogTypes type, string msg)
+        {
+            if (type != LogTypes.Default) 
+            {
+                Console.Write("[ ");
+                switch (type)
+                {
+                    case LogTypes.Listening: Console.ForegroundColor = ConsoleColor.Yellow; break;
+                    case LogTypes.Kill: Console.ForegroundColor = ConsoleColor.Yellow; break;
+                    case LogTypes.Request: Console.ForegroundColor = ConsoleColor.Yellow; break;
+                    case LogTypes.Response: Console.ForegroundColor = ConsoleColor.Yellow; break;
+                    case LogTypes.Error: Console.ForegroundColor = ConsoleColor.Red; break;
+                    case LogTypes.Output: Console.ForegroundColor = ConsoleColor.Green; break;
+                    default: Console.ForegroundColor = ConsoleColor.Magenta; break;
+                }
+                Console.Write(type);
+                Console.ForegroundColor = ConsoleColor.White;
+                Console.Write(" ] ");
+            }
+            Console.WriteLine(msg);
+
+        }
+        public static string Get()
+        { 
+            Console.Write(">");
+            return Console.ReadLine();
+        } 
         public static string DateFormat = "yyyy-MM-dd(HH:mm:ss:fff)";
         public static string NowDateFormatted { get {return DateTime.Now.ToString(DateFormat); } } 
         public static string DefaultTransverterFilePath = "transform.xml";

@@ -98,8 +98,7 @@ namespace SpanTransform.Serializer
             }
             catch (Exception ex)
             {
-                Config.Log(LogTypes.Error, "args to model.");
-                return default(T);
+                throw ex;
             }
         }
     }

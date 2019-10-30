@@ -34,6 +34,7 @@ namespace SpanTransform.Sender
             try
             {
                 //连接转化器
+                Config.Log(LogTypes.Request, "client request to:" + this._remoteEndPoint.Address.ToString());
                 this._socket.Connect(this._remoteEndPoint);
                 //请求体序列化
                 string jsonStr = JsonSerializer.ToJson<RequestModel>(request);
@@ -51,7 +52,7 @@ namespace SpanTransform.Sender
                     string responceStr = Encoding.Default.GetString(receiveBuffer, 0, receiveCount);
                     response = JsonSerializer.ToObject<ResponseModel>(responceStr);
                 }
-
+                Config.Log(LogTypes.Response, "client response from:"+ this._remoteEndPoint.Address.ToString());
                 return response;
             }
             catch
@@ -69,13 +70,13 @@ namespace SpanTransform.Sender
             request.Domain = inParam.Domain;
             request.Address = inParam.Address;
 
-            Config.Log(LogTypes.Request, "tcp client request");
+
             ResponseModel response = this.CommunicationWithServer(request);
-            Config.Log(LogTypes.Response, "tcp client response");
             OutParamModel outParam = new OutParamModel() { Raw = "" };
             if (response != null)
             {
                 outParam.Raw += (response.Status == StatusType.Success) ? "succeed " : "failed ";
+                outParam.Records = response.Records;
                 foreach (RecordModel record in response.Records)
                 {
                     outParam.Raw += "[";
@@ -87,7 +88,6 @@ namespace SpanTransform.Sender
                 
 
             }
-
             return outParam;
         }
     }
